@@ -9,7 +9,7 @@
 
 #define FORWARD HIGH
 #define BACKWARD LOW
-#define SPEED_ADJUST_DELAY 40  // how many milliseconds we should wait before adjusting the speed. Lower value gives a more responsive throttle, higher value gives a smoother ride.
+#define SPEED_ADJUST_DELAY 30  // how many milliseconds we should wait before adjusting the speed. Lower value gives a more responsive throttle, higher value gives a smoother ride.
 #define MAX_FORWARD_SPEED 100  // in percent
 #define MAX_BACKWARD_SPEED 30  // in percent
 
@@ -49,7 +49,7 @@ void setup() {
   analogWrite(motorPin, current_speed);
   digitalWrite(motorDirectionPin, direction);
 
-  Serial.begin(9600); // send and receive at 9600 baud
+  Serial.begin(115200);
   Serial.println("Julle firmware. https://github.com/trycoon/julle");
 
   // two blinks with LED to show that its working
@@ -66,17 +66,18 @@ void loop() {
   if (digitalRead(emergencyBrakePin) == LOW) {
     setMotorSpeed(0);
     Serial.println("EMERGENCY STOP!");
+    delay(100);
     exit(0);
   }
 
-  if (testFullSpeedPin == LOW) {
+  if (digitalRead(testFullSpeedPin) == LOW) {
     target_speed = 100;
   }
-  if (testStopPin == LOW) {
+  if (digitalRead(testStopPin) == LOW) {
     target_speed = 0;
   }
 
-  if (testFullSpeedPin == HIGH && testStopPin == HIGH) {
+  if (digitalRead(testFullSpeedPin) == HIGH && digitalRead(testStopPin) == HIGH) {
     // control motor by throttle, unless overridden by "testFullSpeed" or "testStop"-pins.
     adjustMotorByThrottle();
   }
@@ -102,9 +103,16 @@ void updateCurrentSpeed() {
 
 void setMotorSpeed(int speed) {
   int realSpeed = map(speed, 0, 100, 0, 255);
-  Serial.print("Set speed to: ");
-  Serial.print(speed);
-  Serial.println("%");
+  // TODO: will miss logging when reaching target speed, but I'll can live with that.
+  if (speed != target_speed) {
+    Serial.print("Set speed to: ");
+    Serial.print(speed);
+    Serial.print("% (");
+    Serial.print(realSpeed);
+    Serial.print("), traget: ");
+    Serial.print(target_speed);
+    Serial.println("%");
+  }
 
   analogWrite(ledPin, realSpeed);     // fade LED according to speed
   analogWrite(motorPin, realSpeed);
